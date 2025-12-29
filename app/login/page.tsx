@@ -9,29 +9,81 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import Image from "next/image"
+import { createClient } from "@/lib/supabase/client"
+import { toast } from "sonner"
 
 export default function LoginPage() {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState("") // Added error state for login feedback
+  const [error, setError] = useState("")
   const router = useRouter()
+  const supabase = createClient()
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
     setError("")
 
-    setTimeout(() => {
-      // Credenciales de prueba: admin@vozdelguapo.com / admin123
+    try {
+      // Intentar login con Supabase primero
+      const { data, error: authError } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      })
+
+      // Si hay un error de Supabase pero es porque no está configurado, usar fallback
+      if (authError) {
+        // Si el error es de configuración (URL inválida), usar método de fallback
+        if (authError.message?.includes('Invalid API key') || authError.message?.includes('Failed to fetch')) {
+          // Método de fallback si Supabase no está configurado
       if (email === "admin@vozdelguapo.com" && password === "admin123") {
         localStorage.setItem("admin_logged_in", "true")
-        router.push("/admin")
-      } else {
-        setError("Credenciales incorrectas")
+            toast.success("Sesión iniciada correctamente")
+            router.push("/admin")
+            router.refresh()
+            setIsLoading(false)
+            return
+          } else {
+            setError("Credenciales incorrectas")
+            toast.error("Credenciales incorrectas")
+            setIsLoading(false)
+            return
+          }
+        }
+        
+        // Otro tipo de error de Supabase
+        setError(authError.message || "Credenciales incorrectas")
+        toast.error(authError.message || "Error al iniciar sesión")
+        setIsLoading(false)
+        return
       }
+
+      // Login exitoso con Supabase
+      if (data.user) {
+        toast.success("Sesión iniciada correctamente")
+        router.push("/admin")
+        router.refresh()
+      }
+    } catch (err: any) {
+      console.error("Error en login:", err)
+      
+      // Si es un error de red/configuración, intentar fallback
+      if (err.message?.includes('Failed to fetch') || err.message?.includes('Network')) {
+        if (email === "admin@vozdelguapo.com" && password === "admin123") {
+          localStorage.setItem("admin_logged_in", "true")
+          toast.success("Sesión iniciada correctamente")
+          router.push("/admin")
+          router.refresh()
+          setIsLoading(false)
+          return
+        }
+      }
+      
+      setError("Error al iniciar sesión. Por favor, intenta nuevamente.")
+      toast.error("Error al iniciar sesión")
       setIsLoading(false)
-    }, 1000)
+    }
   }
 
   return (

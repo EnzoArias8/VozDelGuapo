@@ -4,6 +4,7 @@ import { Geist, Geist_Mono, Merriweather } from "next/font/google"
 import { Analytics } from "@vercel/analytics/next"
 import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
+import { Toaster } from "@/components/ui/sonner"
 import "./globals.css"
 
 const _geist = Geist({ subsets: ["latin"] })
@@ -48,6 +49,7 @@ export default function RootLayout({
         <Header />
         <main className="min-h-screen">{children}</main>
         <Footer />
+        <Toaster />
         <Analytics />
       </body>
     </html>
