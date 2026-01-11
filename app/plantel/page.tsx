@@ -1,9 +1,46 @@
+"use client"
+
 import Image from "next/image"
+import { useState, useEffect } from "react"
 import { Card, CardContent } from "@/components/ui/card"
-import { mockPlayers } from "@/lib/mock-data"
+import { getPlayers, getStaff } from "@/lib/data-manager"
 
 export default function PlantelPage() {
+  const [players, setPlayers] = useState<any[]>([])
+  const [staff, setStaff] = useState<any[]>([])
+  const [isLoading, setIsLoading] = useState(false)
+
+  useEffect(() => {
+    setIsLoading(true)
+    const storedPlayers = getPlayers();
+    const storedStaff = getStaff();
+    setPlayers(storedPlayers);
+    setStaff(storedStaff);
+    setIsLoading(false);
+  }, [])
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-muted/30 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Cargando plantel...</p>
+        </div>
+      </div>
+    )
+  }
+
   const positions = ["Arquero", "Defensor", "Mediocampista", "Delantero"]
+
+  const getPositionPlural = (position: string) => {
+    const pluralMap: { [key: string]: string } = {
+      "Arquero": "Arqueros",
+      "Defensor": "Defensores",
+      "Mediocampista": "Mediocampistas",
+      "Delantero": "Delanteros"
+    }
+    return pluralMap[position] || position + "s"
+  }
 
   return (
     <div className="min-h-screen bg-muted/30">
@@ -18,14 +55,14 @@ export default function PlantelPage() {
       {/* Plantel */}
       <div className="container mx-auto px-4 py-12">
         {positions.map((position) => {
-          const players = mockPlayers.filter((p) => p.position === position)
-          if (players.length === 0) return null
+          const positionPlayers = players.filter((p) => p.position === position)
+          if (positionPlayers.length === 0) return null
 
           return (
             <div key={position} className="mb-12">
-              <h2 className="text-2xl font-serif font-bold mb-6 text-foreground">{position}s</h2>
+              <h2 className="text-2xl font-serif font-bold mb-6 text-foreground">{getPositionPlural(position)}</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                {players.map((player) => (
+                {positionPlayers.map((player) => (
                   <Card key={player.id} className="overflow-hidden hover:shadow-lg transition-shadow">
                     <div className="aspect-[3/4] relative bg-muted">
                       <Image
@@ -58,24 +95,14 @@ export default function PlantelPage() {
         <div className="mt-16">
           <h2 className="text-2xl font-serif font-bold mb-6 text-foreground">Cuerpo Técnico</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <Card>
-              <CardContent className="p-6">
-                <h3 className="font-bold text-lg">Rubén Darío Forestello</h3>
-                <p className="text-sm text-muted-foreground">Director Técnico</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="p-6">
-                <h3 className="font-bold text-lg">Hernán Grana</h3>
-                <p className="text-sm text-muted-foreground">Asistente Técnico</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="p-6">
-                <h3 className="font-bold text-lg">Maximiliano Velázquez</h3>
-                <p className="text-sm text-muted-foreground">Preparador Físico</p>
-              </CardContent>
-            </Card>
+            {staff.map((member) => (
+              <Card key={member.id}>
+                <CardContent className="p-6">
+                  <h3 className="font-bold text-lg">{member.name}</h3>
+                  <p className="text-sm text-muted-foreground">{member.role}</p>
+                </CardContent>
+              </Card>
+            ))}
           </div>
         </div>
       </div>

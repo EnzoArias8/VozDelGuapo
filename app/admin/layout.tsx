@@ -26,7 +26,8 @@ export default function AdminLayout({
     // Limpiar localStorage también
     localStorage.removeItem("admin_logged_in")
     
-    router.push('/login')
+    // Redirigir al sitio público
+    router.push('/')
     router.refresh()
   }
 
@@ -37,9 +38,6 @@ export default function AdminLayout({
           <div className="flex items-center justify-between">
             <h1 className="font-semibold">Panel de Administración - Voz del Guapo</h1>
             <div className="flex items-center gap-4">
-              <a href="/" className="text-sm hover:underline">
-                Ver sitio público →
-              </a>
               <Button
                 variant="ghost"
                 size="sm"

@@ -1,25 +1,89 @@
+"use client"
+
+import { useState, useEffect } from "react"
+import { useParams } from "next/navigation"
 import Image from "next/image"
 import Link from "next/link"
 import { notFound } from "next/navigation"
 import { mockNews } from "@/lib/mock-data"
+import { getNews } from "@/lib/data-manager"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Clock, User, Tag, ArrowLeft, Share2, Facebook, Twitter } from "lucide-react"
+import { XIcon } from "@/components/ui/x-icon"
 import { Button } from "@/components/ui/button"
+import { useVisitTracker, getArticleVisits } from "@/hooks/use-visit-tracker"
 
-interface PageProps {
-  params: Promise<{ slug: string }>
+const formatCategory = (category: string) => {
+  const categoryMap: { [key: string]: string } = {
+    'primera': 'Primera División',
+    'mercado': 'Mercado de Pases',
+    'pretemporada': 'Pretemporada',
+    'entrevistas': 'Entrevistas',
+    'inferiores': 'Inferiores',
+    'institucional': 'Institucional'
+  }
+  
+  return categoryMap[category.toLowerCase()] || category.charAt(0).toUpperCase() + category.slice(1)
 }
 
-export default async function NoticiaPage({ params }: PageProps) {
-  const { slug } = await params
-  const article = mockNews.find((a) => a.slug === slug)
+export default function NoticiaPage() {
+  const params = useParams()
+  const slug = params.slug as string
+  
+  const [article, setArticle] = useState<any>(null)
+  const [relatedNews, setRelatedNews] = useState<any[]>([])
+  const [isLoading, setIsLoading] = useState(false)
+  const [notFoundState, setNotFoundState] = useState(false)
+  const [articleVisits, setArticleVisits] = useState(0)
 
-  if (!article) {
+  // Activar seguimiento de visitas para esta noticia
+  useVisitTracker(slug)
+
+  useEffect(() => {
+    // Decodificar el slug de la URL
+    const decodedSlug = decodeURIComponent(slug);
+    
+    const allNews = getNews();
+    const foundArticle = allNews.find((a) => a.slug === decodedSlug);
+    
+    if (!foundArticle) {
+      setNotFoundState(true);
+      setIsLoading(false);
+      return;
+    }
+    
+    setArticle(foundArticle);
+    const related = allNews.filter((a) => a.category === foundArticle.category && a.id !== foundArticle.id).slice(0, 3);
+    setRelatedNews(related);
+    setArticleVisits(getArticleVisits(foundArticle.id));
+    setIsLoading(false);
+  }, [slug])
+
+  if (isLoading) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Cargando noticia...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (notFoundState) {
     notFound()
   }
 
-  const relatedNews = mockNews.filter((a) => a.category === article.category && a.id !== article.id).slice(0, 3)
+  if (!article) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="text-center">
+          <p className="text-muted-foreground">No se encontró la noticia.</p>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -63,13 +127,38 @@ export default async function NoticiaPage({ params }: PageProps) {
             {/* Share Buttons */}
             <div className="flex items-center gap-2">
               <span className="text-sm text-muted-foreground">Compartir:</span>
-              <Button variant="outline" size="icon" className="h-8 w-8 bg-transparent">
+              <Button 
+                variant="outline" 
+                size="icon" 
+                className="h-8 w-8 bg-transparent"
+                onClick={() => {
+                  const url = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(window.location.href)}`
+                  window.open(url, '_blank', 'width=600,height=400')
+                }}
+              >
                 <Facebook className="h-4 w-4" />
               </Button>
-              <Button variant="outline" size="icon" className="h-8 w-8 bg-transparent">
-                <Twitter className="h-4 w-4" />
+              <Button 
+                variant="outline" 
+                size="icon" 
+                className="h-8 w-8 bg-transparent"
+                onClick={() => {
+                  const url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(article.title)}&url=${encodeURIComponent(window.location.href)}`
+                  window.open(url, '_blank', 'width=600,height=400')
+                }}
+              >
+                <XIcon className="h-4 w-4" />
               </Button>
-              <Button variant="outline" size="icon" className="h-8 w-8 bg-transparent">
+              <Button 
+                variant="outline" 
+                size="icon" 
+                className="h-8 w-8 bg-transparent"
+                onClick={() => {
+                  navigator.clipboard.writeText(window.location.href)
+                  // Mostrar toast de éxito
+                  alert('¡Enlace copiado al portapapeles!')
+                }}
+              >
                 <Share2 className="h-4 w-4" />
               </Button>
             </div>
@@ -82,27 +171,38 @@ export default async function NoticiaPage({ params }: PageProps) {
 
           {/* Article Content */}
           <div className="prose prose-lg max-w-none mb-8">
-            <p className="text-lg leading-relaxed">{article.content}</p>
-
-            <p className="text-lg leading-relaxed">
-              El encuentro comenzó con un ritmo vertiginoso, donde ambos equipos buscaron rápidamente la portería
-              contraria. Sin embargo, fue Barracas Central quien logró abrir el marcador a los 23 minutos con un gol de
-              cabeza tras un corner perfectamente ejecutado. La hinchada local estalló de alegría en las tribunas del
-              Chiqui Tapia.
-            </p>
-
-            <p className="text-lg leading-relaxed">
-              Independiente respondió con mayor presión en el segundo tiempo, pero la defensa guapa se mantuvo sólida.
-              Contra todo pronóstico, el Guapo amplió la ventaja a los 67 minutos con un contragolpe letal que dejó sin
-              respuesta al arquero visitante. Aunque el Rojo descontó sobre el final, ya no hubo tiempo para más.
-            </p>
-
-            <p className="text-lg leading-relaxed">
-              Esta victoria es fundamental para las aspiraciones del equipo de seguir peleando por un lugar en las
-              competencias internacionales de la próxima temporada. Los tres puntos permiten al Guapo escalar posiciones
-              en la tabla y mantener vivo el sueño de volver a la Copa Sudamericana.
-            </p>
+            <div 
+              dangerouslySetInnerHTML={{ 
+                __html: article.content
+                  .replace(/\n/g, '<br />')
+                  .replace(/!\[([^\]]+)\]\(([^\)]+)\)/g, (match, alt, url) => {
+                    return `<img src="${url}" alt="${alt}" style="max-width: 100%; height: auto; border-radius: 8px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); margin: 16px 0; display: block;" />`
+                  })
+              }} 
+              className="text-lg leading-relaxed"
+            />
           </div>
+
+          {/* Additional Images */}
+          {article.images && article.images.length > 1 && (
+            <div className="mb-8">
+              <h3 className="text-xl font-serif font-bold mb-4">Imágenes</h3>
+              <div className="space-y-4">
+                {article.images
+                  .filter((image: string) => image !== article.imageUrl) // Excluir imagen principal
+                  .map((image: string, index: number) => (
+                    <div key={index} className="relative aspect-video rounded-lg overflow-hidden">
+                      <Image 
+                        src={image} 
+                        alt={`Imagen ${index + 1} de ${article.title}`} 
+                        fill 
+                        className="object-contain" 
+                      />
+                    </div>
+                  ))}
+              </div>
+            </div>
+          )}
 
           {/* Tags */}
           <div className="flex items-center gap-2 flex-wrap pt-6 border-t">
@@ -150,14 +250,14 @@ export default async function NoticiaPage({ params }: PageProps) {
           <div>
             <h3 className="text-xl font-serif font-bold mb-4">Categorías</h3>
             <div className="space-y-2">
-              {["Primera División", "Mercado", "Pretemporada", "Entrevistas", "Inferiores", "Institucional"].map(
+              {["primera", "mercado", "pretemporada", "entrevistas", "inferiores", "institucional"].map(
                 (category) => (
                   <Link
                     key={category}
-                    href={`/noticias?categoria=${category.toLowerCase().replace(" ", "-")}`}
+                    href={`/noticias?categoria=${category}`}
                     className="block p-3 border rounded-lg hover:border-primary hover:bg-primary/5 transition-colors text-sm"
                   >
-                    {category}
+                    {formatCategory(category)}
                   </Link>
                 ),
               )}

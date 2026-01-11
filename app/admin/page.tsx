@@ -1,37 +1,95 @@
+"use client"
+
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import { mockNews } from "@/lib/mock-data"
+import { getNews, deleteNews } from "@/lib/data-manager"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { FileText, Users, BarChart3, Settings, Plus, Eye, Pencil, Trash2, Calendar, History } from "lucide-react"
+import { FileText, Users, BarChart3, Settings, Plus, Eye, Pencil, Trash2, Calendar, TrendingUp } from "lucide-react"
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog"
+import { toast } from "sonner"
+import { getArticleVisits } from "@/hooks/use-visit-tracker"
 
 export default function AdminDashboard() {
+  const [news, setNews] = useState<any[]>([])
+  const [totalVisits, setTotalVisits] = useState(0)
+  const [todayVisits, setTodayVisits] = useState(0)
+  const [analyticsData, setAnalyticsData] = useState<any>(null)
+  const [loadingAnalytics, setLoadingAnalytics] = useState(false)
+
+  useEffect(() => {
+    // Inicializar datos
+    const storedNews = getNews();
+    if (storedNews.length === 0) {
+      // Si no hay datos guardados, usar los datos mock
+      setNews(mockNews);
+    } else {
+      setNews(storedNews);
+    }
+
+    // Cargar estadísticas reales de Google Analytics
+    const fetchAnalytics = async () => {
+      try {
+        setLoadingAnalytics(true)
+        const response = await fetch('/api/analytics')
+        const result = await response.json()
+        
+        if (result.success) {
+          setAnalyticsData(result.data)
+          setTotalVisits(result.data.totalVisits)
+          setTodayVisits(result.data.todayVisits)
+        }
+      } catch (error) {
+        console.error('Error loading analytics:', error)
+        // Fallback a datos simulados
+        setTotalVisits(1247)
+        setTodayVisits(43)
+      } finally {
+        setLoadingAnalytics(false)
+      }
+    }
+
+    fetchAnalytics()
+  }, [])
+
   const stats = [
     {
       title: "Total Noticias",
-      value: mockNews.length,
+      value: news.length,
       icon: FileText,
       description: "+2 esta semana",
     },
     {
+      title: "Visitas Totales",
+      value: totalVisits.toLocaleString(),
+      icon: TrendingUp,
+      description: `${todayVisits} hoy`,
+    },
+    {
       title: "Jugadores",
-      value: 28,
+      value: 4,
       icon: Users,
       description: "Plantel actual",
     },
     {
       title: "Próximos Partidos",
-      value: 5,
+      value: 2,
       icon: Calendar,
       description: "Este mes",
     },
-    {
-      title: "Categorías",
-      value: 6,
-      icon: BarChart3,
-      description: "Activas",
-    },
   ]
+
+  const handleDelete = (articleId: string) => {
+    const success = deleteNews(articleId);
+    if (success) {
+      setNews(getNews());
+      toast.success("Noticia eliminada correctamente");
+    } else {
+      toast.error("Error al eliminar la noticia");
+    }
+  }
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -66,84 +124,6 @@ export default function AdminDashboard() {
         ))}
       </div>
 
-      {/* Quick Actions */}
-      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-6 mb-8">
-        <Card className="hover:shadow-md transition-shadow cursor-pointer">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base">
-              <FileText className="h-5 w-5" />
-              Noticias
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-muted-foreground mb-4">Gestionar artículos</p>
-            <Button variant="outline" className="w-full bg-transparent" asChild>
-              <Link href="/admin/noticias">Administrar</Link>
-            </Button>
-          </CardContent>
-        </Card>
-
-        <Card className="hover:shadow-md transition-shadow cursor-pointer">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base">
-              <Users className="h-5 w-5" />
-              Plantel
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-muted-foreground mb-4">Gestionar jugadores</p>
-            <Button variant="outline" className="w-full bg-transparent" asChild>
-              <Link href="/admin/plantel">Administrar</Link>
-            </Button>
-          </CardContent>
-        </Card>
-
-        <Card className="hover:shadow-md transition-shadow cursor-pointer">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base">
-              <Calendar className="h-5 w-5" />
-              Partidos
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-muted-foreground mb-4">Gestionar fixture</p>
-            <Button variant="outline" className="w-full bg-transparent" asChild>
-              <Link href="/admin/partidos">Administrar</Link>
-            </Button>
-          </CardContent>
-        </Card>
-
-        <Card className="hover:shadow-md transition-shadow cursor-pointer">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base">
-              <History className="h-5 w-5" />
-              Historia
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-muted-foreground mb-4">Editar historia</p>
-            <Button variant="outline" className="w-full bg-transparent" asChild>
-              <Link href="/admin/historia">Administrar</Link>
-            </Button>
-          </CardContent>
-        </Card>
-
-        <Card className="hover:shadow-md transition-shadow cursor-pointer">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base">
-              <Settings className="h-5 w-5" />
-              Contacto
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-muted-foreground mb-4">Editar contacto</p>
-            <Button variant="outline" className="w-full bg-transparent" asChild>
-              <Link href="/admin/contacto">Administrar</Link>
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-
       {/* Recent Articles */}
       <Card>
         <CardHeader>
@@ -156,7 +136,7 @@ export default function AdminDashboard() {
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            {mockNews.slice(0, 5).map((article) => (
+            {news.slice(0, 5).map((article) => (
               <div
                 key={article.id}
                 className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50"
@@ -182,6 +162,11 @@ export default function AdminDashboard() {
                         year: "numeric",
                       })}
                     </span>
+                    <span>•</span>
+                    <span className="flex items-center gap-1">
+                      <Eye className="h-3 w-3" />
+                      {getArticleVisits(article.id)} visitas
+                    </span>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
@@ -195,15 +180,140 @@ export default function AdminDashboard() {
                       <Pencil className="h-4 w-4" />
                     </Link>
                   </Button>
-                  <Button variant="ghost" size="icon">
-                    <Trash2 className="h-4 w-4 text-destructive" />
-                  </Button>
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button variant="ghost" size="icon">
+                        <Trash2 className="h-4 w-4 text-destructive" />
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          Esta acción no se puede deshacer. La noticia será eliminada permanentemente.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                        <AlertDialogAction onClick={() => handleDelete(article.id)}>
+                          Eliminar
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
                 </div>
               </div>
             ))}
           </div>
         </CardContent>
       </Card>
+
+      {/* Analytics Dashboard */}
+      {analyticsData && (
+        <div className="lg:col-span-3 space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <TrendingUp className="h-5 w-5" />
+                Estadísticas Detalladas
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Estadísticas Generales */}
+                <div className="space-y-4">
+                  <h3 className="font-semibold">Resumen General</h3>
+                  <div className="space-y-3">
+                    <div className="flex justify-between items-center p-3 bg-blue-50 dark:bg-blue-950 rounded-lg">
+                      <span className="text-sm font-medium">Visitas Totales</span>
+                      <span className="text-lg font-bold text-blue-600">{analyticsData.totalVisits.toLocaleString()}</span>
+                    </div>
+                    <div className="flex justify-between items-center p-3 bg-green-50 dark:bg-green-950 rounded-lg">
+                      <span className="text-sm font-medium">Visitas Hoy</span>
+                      <span className="text-lg font-bold text-green-600">{analyticsData.todayVisits}</span>
+                    </div>
+                    <div className="flex justify-between items-center p-3 bg-purple-50 dark:bg-purple-950 rounded-lg">
+                      <span className="text-sm font-medium">Promedio Diario</span>
+                      <span className="text-lg font-bold text-purple-600">
+                        {Math.round(analyticsData.totalVisits / 30)}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Estadísticas por Categoría */}
+                <div className="space-y-4">
+                  <h3 className="font-semibold">Categorías Populares</h3>
+                  <div className="space-y-2">
+                    {analyticsData.popularCategories.map((cat: any, index: number) => {
+                      const percentage = Math.round((cat.visits / analyticsData.totalVisits) * 100)
+                      return (
+                        <div key={index} className="space-y-1">
+                          <div className="flex justify-between items-center">
+                            <span className="text-sm">{cat.category}</span>
+                            <span className="text-sm font-medium">{cat.visits} ({percentage}%)</span>
+                          </div>
+                          <div className="w-full bg-muted rounded-full h-2">
+                            <div 
+                              className="bg-primary h-2 rounded-full transition-all duration-300"
+                              style={{ width: `${percentage}%` }}
+                            />
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              </div>
+
+              {/* Páginas Más Visitadas */}
+              <div className="mt-6">
+                <h3 className="font-semibold mb-3">Páginas Más Visitadas</h3>
+                <div className="space-y-2">
+                  {analyticsData.topPages.map((page: any, index: number) => (
+                    <div key={index} className="flex justify-between items-center p-3 bg-muted/50 rounded-lg hover:bg-muted transition-colors">
+                      <div className="flex items-center gap-3">
+                        <span className="text-xs font-bold text-muted-foreground w-4">#{index + 1}</span>
+                        <span className="text-sm truncate max-w-xs">{page.title}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-medium">{page.visits}</span>
+                        <span className="text-xs text-muted-foreground">visitas</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Estadísticas Diarias */}
+              <div className="mt-6">
+                <h3 className="font-semibold mb-3">Últimos 5 Días</h3>
+                <div className="grid grid-cols-5 gap-2">
+                  {analyticsData.dailyStats.map((day: any, index: number) => {
+                    const date = new Date(day.date)
+                    const dayName = date.toLocaleDateString('es-AR', { weekday: 'short' })
+                    const maxVisits = Math.max(...analyticsData.dailyStats.map((d: any) => d.visits))
+                    const height = maxVisits > 0 ? (day.visits / maxVisits) * 100 : 0
+                    
+                    return (
+                      <div key={index} className="text-center">
+                        <div className="h-20 flex items-end justify-center mb-2">
+                          <div 
+                            className="w-full bg-primary rounded-t transition-all duration-300 hover:opacity-80"
+                            style={{ height: `${height}%`, minHeight: '4px' }}
+                          />
+                        </div>
+                        <div className="text-xs text-muted-foreground">{dayName}</div>
+                        <div className="text-xs font-medium">{day.visits}</div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
     </div>
   )
 }

@@ -3,7 +3,7 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
-import { FileText, Users, Settings, LayoutDashboard, Calendar, History, Mail } from "lucide-react"
+import { FileText, Users, LayoutDashboard, Calendar } from "lucide-react"
 
 export function AdminNav() {
   const pathname = usePathname()
@@ -28,21 +28,6 @@ export function AdminNav() {
       href: "/admin/partidos",
       label: "Partidos",
       icon: Calendar,
-    },
-    {
-      href: "/admin/historia",
-      label: "Historia",
-      icon: History,
-    },
-    {
-      href: "/admin/contacto",
-      label: "Contacto",
-      icon: Mail,
-    },
-    {
-      href: "/admin/configuracion",
-      label: "Configuración",
-      icon: Settings,
     },
   ]
 

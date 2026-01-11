@@ -91,7 +91,7 @@ export default function LoginPage() {
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-4 text-center">
           <div className="flex justify-center">
-            <Image src="/images/image.png" alt="Barracas Central" width={100} height={120} className="object-contain" />
+            <Image src="/images/image.png" alt="Voz del Guapo - Personaje característico" width={140} height={168} className="object-contain" />
           </div>
           <div>
             <CardTitle className="text-2xl font-serif">Voz del Guapo</CardTitle>
@@ -101,17 +101,12 @@ export default function LoginPage() {
         <CardContent>
           <form onSubmit={handleLogin} className="space-y-4">
             {error && <div className="bg-destructive/10 text-destructive text-sm p-3 rounded-md">{error}</div>}
-            <div className="bg-muted p-3 rounded-md text-sm">
-              <p className="font-medium mb-1">Credenciales de prueba:</p>
-              <p className="text-muted-foreground">Email: admin@vozdelguapo.com</p>
-              <p className="text-muted-foreground">Contraseña: admin123</p>
-            </div>
             <div className="space-y-2">
               <Label htmlFor="email">Correo electrónico</Label>
               <Input
                 id="email"
                 type="email"
-                placeholder="admin@vozdelguapo.com"
+                placeholder="Correo electrónico"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required

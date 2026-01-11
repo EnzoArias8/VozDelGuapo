@@ -1,58 +1,66 @@
 "use client"
 
+import { useState, useEffect } from "react"
 import Image from "next/image"
 
 export default function Loading() {
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center overflow-hidden">
-      {/* Fondo con tiras rojas y blancas horizontales (como la camiseta) */}
-      <div 
-        className="absolute inset-0 w-full h-full"
-        style={{
-          background: `
-            repeating-linear-gradient(
-              0deg,
-              #DC2626 0px,
-              #DC2626 40px,
-              #FFFFFF 40px,
-              #FFFFFF 80px
-            )
-          `,
-        }}
-      />
-      
-      {/* Overlay sutil para mejor contraste */}
-      <div className="absolute inset-0 bg-black/5" />
-      
-      {/* Contenido centrado */}
-      <div className="relative z-10 flex flex-col items-center justify-center space-y-8 px-4">
-        {/* Escudo con animación */}
-        <div className="relative animate-pulse">
-          <div className="absolute inset-0 bg-white/20 rounded-full blur-3xl scale-150" />
-          <Image
-            src="/images/image.png"
-            alt="Escudo de Barracas Central"
-            width={220}
-            height={264}
-            className="relative object-contain drop-shadow-2xl"
-            priority
-          />
-        </div>
+  const [showContent, setShowContent] = useState(false)
+
+  useEffect(() => {
+    // Mostrar la pantalla de carga por 5 segundos
+    const timer = setTimeout(() => {
+      setShowContent(true)
+    }, 5000)
+
+    return () => clearTimeout(timer)
+  }, [])
+
+  if (!showContent) {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center overflow-hidden">
+        {/* Fondo con imagen */}
+        <div 
+          className="absolute inset-0 w-full h-full bg-cover bg-center bg-no-repeat"
+          style={{
+            backgroundImage: 'url("/images/fondo.jfif")',
+          }}
+        />
         
-        {/* Texto con sombra */}
-        <div className="text-center">
-          <h1 
-            className="text-5xl md:text-7xl font-serif font-bold drop-shadow-2xl"
-            style={{
-              color: '#DC2626',
-              textShadow: '3px 3px 6px rgba(0, 0, 0, 0.3), 0 0 20px rgba(220, 38, 38, 0.5)',
-            }}
-          >
-            Voz del Guapo
-          </h1>
+        {/* Overlay para mejor contraste */}
+        <div className="absolute inset-0 bg-black/20" />
+        
+        {/* Contenido centrado */}
+        <div className="relative z-10 flex flex-col items-center justify-center space-y-8 px-4">
+          {/* Logo con animación de salto */}
+          <div className="relative">
+            <Image
+              src="/images/image.png"
+              alt="Voz del Guapo - Logo"
+              width={280}
+              height={336}
+              className="relative object-contain drop-shadow-2xl animate-bounce"
+              priority
+            />
+          </div>
+          
+          {/* Texto con sombra */}
+          <div className="text-center">
+            <h1 className="text-5xl md:text-7xl font-serif font-bold text-white drop-shadow-lg">
+              Voz del Guapo
+            </h1>
+          </div>
+          
+          {/* Indicador de carga */}
+          <div className="flex space-x-2">
+            <div className="w-3 h-3 bg-white rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
+            <div className="w-3 h-3 bg-white rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
+            <div className="w-3 h-3 bg-white rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+          </div>
         </div>
       </div>
-    </div>
-  )
-}
+    )
+  }
 
+  // Después del tiempo de carga, mostrar null para que Next.js continúe con la página real
+  return null
+}

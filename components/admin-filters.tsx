@@ -18,7 +18,7 @@ export function AdminFilters() {
         <SelectContent>
           <SelectItem value="todas">Todas las categorías</SelectItem>
           <SelectItem value="primera">Primera División</SelectItem>
-          <SelectItem value="mercado">Mercado</SelectItem>
+          <SelectItem value="mercado">Mercado de Pases</SelectItem>
           <SelectItem value="pretemporada">Pretemporada</SelectItem>
           <SelectItem value="entrevistas">Entrevistas</SelectItem>
           <SelectItem value="inferiores">Inferiores</SelectItem>

@@ -1,11 +1,31 @@
+"use client"
+import { useEffect, useState } from "react"
 import { Calendar, MapPin, Trophy } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { mockMatches } from "@/lib/mock-data"
+import { Match } from "@/lib/mock-data"
 
 export default function PartidosPage() {
-  const upcomingMatches = mockMatches.filter((m) => m.status === "upcoming")
-  const finishedMatches = mockMatches.filter((m) => m.status === "finished")
+  const [matches, setMatches] = useState<Match[]>([])
+
+  useEffect(() => {
+    fetchMatches()
+  }, [])
+
+  const fetchMatches = async () => {
+    try {
+      const response = await fetch('/api/matches')
+      if (response.ok) {
+        const data = await response.json()
+        setMatches(data)
+      }
+    } catch (error) {
+      console.error('Error fetching matches:', error)
+    }
+  }
+
+  const upcomingMatches = matches.filter((m) => m.status === "upcoming")
+  const finishedMatches = matches.filter((m) => m.status === "finished")
 
   return (
     <div className="min-h-screen bg-muted/30">

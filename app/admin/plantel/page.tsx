@@ -1,21 +1,61 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Plus, Search, Pencil, Trash2, Users } from "lucide-react"
 import { mockPlayers } from "@/lib/mock-data"
+import { getPlayers, deletePlayer, Player, getStaff, deleteStaff, Staff } from "@/lib/data-manager"
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog"
+import Link from "next/link"
+import { toast } from "sonner"
 
 export default function AdminPlantelPage() {
   const [searchTerm, setSearchTerm] = useState("")
+  const [players, setPlayers] = useState<Player[]>([])
+  const [staff, setStaff] = useState<Staff[]>([])
 
-  const filteredPlayers = mockPlayers.filter(
+  useEffect(() => {
+    // Inicializar datos
+    const storedPlayers = getPlayers();
+    if (storedPlayers.length === 0) {
+      // Si no hay datos guardados, usar los datos mock
+      setPlayers(mockPlayers);
+    } else {
+      setPlayers(storedPlayers);
+    }
+
+    const storedStaff = getStaff();
+    setStaff(storedStaff);
+  }, [])
+
+  const filteredPlayers = players.filter(
     (player) =>
       player.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       player.position.toLowerCase().includes(searchTerm.toLowerCase()),
   )
+
+  const handleDelete = (playerId: string) => {
+    const success = deletePlayer(playerId);
+    if (success) {
+      setPlayers(getPlayers());
+      toast.success("Jugador eliminado correctamente");
+    } else {
+      toast.error("Error al eliminar el jugador");
+    }
+  }
+
+  const handleDeleteStaff = (staffId: string) => {
+    const success = deleteStaff(staffId);
+    if (success) {
+      setStaff(getStaff());
+      toast.success("Miembro del cuerpo técnico eliminado correctamente");
+    } else {
+      toast.error("Error al eliminar el miembro del cuerpo técnico");
+    }
+  }
 
   const positionGroups = [
     { name: "Arqueros", players: filteredPlayers.filter((p) => p.position === "Arquero") },
@@ -32,9 +72,11 @@ export default function AdminPlantelPage() {
             <h1 className="text-3xl font-serif font-bold mb-2">Gestión del Plantel</h1>
             <p className="text-muted-foreground">Administra los jugadores y cuerpo técnico</p>
           </div>
-          <Button className="gap-2">
-            <Plus className="h-4 w-4" />
-            Agregar Jugador
+          <Button asChild className="gap-2">
+            <Link href="/admin/plantel/nuevo">
+              <Plus className="h-4 w-4" />
+              Agregar Jugador
+            </Link>
           </Button>
         </div>
 
@@ -89,12 +131,32 @@ export default function AdminPlantelPage() {
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
-                        <Button variant="ghost" size="icon">
-                          <Pencil className="h-4 w-4" />
+                        <Button variant="ghost" size="icon" asChild>
+                          <Link href={`/admin/plantel/${player.id}/editar`}>
+                            <Pencil className="h-4 w-4" />
+                          </Link>
                         </Button>
-                        <Button variant="ghost" size="icon">
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button variant="ghost" size="icon">
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                Esta acción no se puede deshacer. El jugador será eliminado permanentemente del plantel.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                              <AlertDialogAction onClick={() => handleDelete(player.id)}>
+                                Eliminar
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
                       </div>
                     </div>
                   ))
@@ -104,6 +166,74 @@ export default function AdminPlantelPage() {
           </Card>
         ))}
       </div>
+
+      {/* Cuerpo Técnico */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle className="flex items-center gap-2">
+              <Users className="h-5 w-5" />
+              Cuerpo Técnico
+              <Badge variant="secondary" className="ml-2">
+                {staff.length}
+              </Badge>
+            </CardTitle>
+            <Button asChild className="gap-2" variant="outline">
+              <Link href="/admin/plantel/staff/nuevo">
+                <Plus className="h-4 w-4" />
+                Agregar Miembro
+              </Link>
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-3">
+            {staff.length === 0 ? (
+              <p className="text-sm text-muted-foreground py-4">No hay miembros del cuerpo técnico</p>
+            ) : (
+              staff.map((member) => (
+                <div
+                  key={member.id}
+                  className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50"
+                >
+                  <div>
+                    <h3 className="font-semibold">{member.name}</h3>
+                    <p className="text-sm text-muted-foreground">{member.role}</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button variant="ghost" size="icon" asChild>
+                      <Link href={`/admin/plantel/staff/${member.id}/editar`}>
+                        <Pencil className="h-4 w-4" />
+                      </Link>
+                    </Button>
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button variant="ghost" size="icon">
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            Esta acción no se puede deshacer. El miembro del cuerpo técnico será eliminado permanentemente.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                          <AlertDialogAction onClick={() => handleDeleteStaff(member.id)}>
+                            Eliminar
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </CardContent>
+      </Card>
     </div>
   )
 }

@@ -1,13 +1,42 @@
+"use client"
+
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import Image from "next/image"
 import { mockNews } from "@/lib/mock-data"
+import { getNews, deleteNews, NewsItem } from "@/lib/data-manager"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Plus, Eye, Pencil, Trash2 } from "lucide-react"
 import { AdminFilters } from "@/components/admin-filters"
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog"
+import { toast } from "sonner"
 
 export default function AdminNoticiasPage() {
+  const [news, setNews] = useState<NewsItem[]>([])
+
+  useEffect(() => {
+    // Inicializar datos
+    const storedNews = getNews();
+    if (storedNews.length === 0) {
+      // Si no hay datos guardados, usar los datos mock
+      setNews(mockNews);
+    } else {
+      setNews(storedNews);
+    }
+  }, [])
+
+  const handleDelete = (articleId: string) => {
+    const success = deleteNews(articleId);
+    if (success) {
+      setNews(getNews());
+      toast.success("Noticia eliminada correctamente");
+    } else {
+      toast.error("Error al eliminar la noticia");
+    }
+  }
+
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="mb-8">
@@ -30,7 +59,7 @@ export default function AdminNoticiasPage() {
 
       {/* News List */}
       <div className="space-y-4">
-        {mockNews.map((article) => (
+        {news.map((article) => (
           <Card key={article.id} className="overflow-hidden hover:shadow-md transition-shadow">
             <CardContent className="p-4">
               <div className="flex gap-4">
@@ -79,9 +108,27 @@ export default function AdminNoticiasPage() {
                           <Pencil className="h-4 w-4" />
                         </Link>
                       </Button>
-                      <Button variant="ghost" size="icon">
-                        <Trash2 className="h-4 w-4 text-destructive" />
-                      </Button>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button variant="ghost" size="icon">
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Esta acción no se puede deshacer. La noticia será eliminada permanentemente.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                            <AlertDialogAction onClick={() => handleDelete(article.id)}>
+                              Eliminar
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
                     </div>
                   </div>
                 </div>
