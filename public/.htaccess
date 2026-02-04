@@ -1,0 +1,21 @@
+RewriteEngine On
+RewriteBase /
+
+# 1. Si el archivo existe físicamente, cargalo directamente
+RewriteCond %{REQUEST_FILENAME} -f
+RewriteRule ^ - [L]
+
+# 2. Arreglo específico para rutas de edición con IDs UUID
+RewriteRule ^admin/noticias/([a-f0-9-]+)/editar/?$ /admin/noticias/$1/editar/index.html [L]
+
+# 3. Reglas para admin (con trailing slash)
+RewriteRule ^admin/plantel/staff/([a-f0-9-]+)/editar/?$ /admin/plantel/staff/$1/editar/index.html [L]
+RewriteRule ^admin/plantel/([a-f0-9-]+)/editar/?$ /admin/plantel/$1/editar/index.html [L]
+
+# 4. Regla para noticias públicas (con trailing slash)
+RewriteRule ^noticias/([^/]+)/?$ /noticias/detalle/index.html [L]
+
+# 5. Fallback general para que Next.js maneje el resto
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule . /index.html [L]

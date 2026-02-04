@@ -3,7 +3,7 @@
 import { useEffect } from 'react'
 
 // Google Analytics Measurement ID
-const GA_MEASUREMENT_ID = 'G-519094805' // Reemplazar con tu ID real de Google Analytics
+const GA_MEASUREMENT_ID = 'G-T8F6X9V31M' // ID actualizado de Google Analytics
 
 declare global {
   interface Window {

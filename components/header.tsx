@@ -52,7 +52,7 @@ export function Header() {
               <TwitterX className="h-4 w-4" />
             </a>
             <a
-              href="https://instagram.com/@vozdelguapo"
+              href="https://www.instagram.com/vozdelguapo?igsh=dmpweHFmMDkxanNm"
               target="_blank"
               rel="noopener noreferrer"
               className="hover:opacity-80 transition-opacity"
@@ -94,7 +94,7 @@ export function Header() {
       </div>
 
       {/* Navigation */}
-      <nav className="border-t hidden md:block">
+      <nav className="hidden md:block">
         <div className="container mx-auto px-4">
           <ul className="flex items-center gap-6 py-3 text-sm font-medium">
             <li>
@@ -117,7 +117,35 @@ export function Header() {
                 PARTIDOS
               </Link>
             </li>
-                      </ul>
+          </ul>
+        </div>
+      </nav>
+
+      {/* Mobile Navigation */}
+      <nav className="md:hidden">
+        <div className="container mx-auto px-4">
+          <ul className="flex items-center justify-around py-3 text-sm font-medium">
+            <li>
+              <Link href="/" className="hover:text-primary transition-colors">
+                INICIO
+              </Link>
+            </li>
+            <li>
+              <Link href="/noticias" className="hover:text-primary transition-colors">
+                NOTICIAS
+              </Link>
+            </li>
+            <li>
+              <Link href="/plantel" className="hover:text-primary transition-colors">
+                PLANTEL
+              </Link>
+            </li>
+            <li>
+              <Link href="/partidos" className="hover:text-primary transition-colors">
+                PARTIDOS
+              </Link>
+            </li>
+          </ul>
         </div>
       </nav>
 

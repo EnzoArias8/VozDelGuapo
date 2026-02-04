@@ -17,11 +17,12 @@ export function AdminFilters() {
         </SelectTrigger>
         <SelectContent>
           <SelectItem value="todas">Todas las categorías</SelectItem>
-          <SelectItem value="primera">Primera División</SelectItem>
-          <SelectItem value="mercado">Mercado de Pases</SelectItem>
-          <SelectItem value="pretemporada">Pretemporada</SelectItem>
+          <SelectItem value="liga-profesional">Liga Profesional</SelectItem>
+          <SelectItem value="copa-argentina">Copa Argentina</SelectItem>
+          <SelectItem value="copa-sudamericana">Copa Sudamericana</SelectItem>
+          <SelectItem value="reserva">Reserva</SelectItem>
           <SelectItem value="entrevistas">Entrevistas</SelectItem>
-          <SelectItem value="inferiores">Inferiores</SelectItem>
+          <SelectItem value="mercado">Mercado de Pases</SelectItem>
           <SelectItem value="institucional">Institucional</SelectItem>
         </SelectContent>
       </Select>

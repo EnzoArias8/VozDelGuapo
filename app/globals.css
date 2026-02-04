@@ -122,4 +122,47 @@
   body {
     @apply bg-background text-foreground;
   }
+  
+  /* Eliminar puntos y subrayados en móvil */
+  @media (max-width: 768px) {
+    * {
+      text-decoration: none !important;
+      text-decoration-style: none !important;
+      text-decoration-line: none !important;
+      text-underline-offset: 0 !important;
+      border-bottom: none !important;
+      border-top: none !important;
+      outline: none !important;
+    }
+    
+    /* Específico para enlaces */
+    a {
+      text-decoration: none !important;
+      border-bottom: none !important;
+      border-top: none !important;
+      outline: none !important;
+      pointer-events: auto !important;
+    }
+    
+    /* Eliminar puntos en fechas y texto */
+    .text-sm, .text-xs, span, p, h1, h2, h3, h4, h5, h6 {
+      text-decoration: none !important;
+      border-bottom: none !important;
+      border-top: none !important;
+      outline: none !important;
+    }
+    
+    /* Específico para elementos con iconos */
+    .flex.items-center.gap-2 {
+      text-decoration: none !important;
+      border-bottom: none !important;
+      border-top: none !important;
+      outline: none !important;
+    }
+    
+    /* Evitar clicks accidentales en texto de estadio */
+    [class*="stadium"], [class*="MapPin"] {
+      pointer-events: none !important;
+    }
+  }
 }

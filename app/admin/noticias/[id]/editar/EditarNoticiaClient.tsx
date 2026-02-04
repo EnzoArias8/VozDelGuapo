@@ -1,7 +1,7 @@
 "use client"
 
-import { useState } from "react"
-import { useRouter } from "next/navigation"
+import { useState, useEffect } from "react"
+import { useParams, useRouter } from "next/navigation"
 import Link from "next/link"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -10,16 +10,24 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Switch } from "@/components/ui/switch"
 import { Badge } from "@/components/ui/badge"
-import { ArrowLeft, Save, Eye, ImageIcon, X } from "lucide-react"
+import { ArrowLeft, Save, Eye, ImageIcon, X, Trash2 } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { createNews } from "@/lib/data-manager"
+import { getNewsById, updateNews, deleteNews, NewsItem } from "@/lib/data-manager"
 import { uploadFile } from "@/lib/upload-utils"
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog"
 import { toast } from "sonner"
 
-export default function NuevaNoticiaPage() {
+export default function EditarNoticiaPage() {
+  const params = useParams()
   const router = useRouter()
-  const [tags, setTags] = useState<string[]>([])
+  const articleId = params.id as string
+  
+  const [article, setArticle] = useState<NewsItem | null>(null)
+  const [isLoading, setIsLoading] = useState(false)
+  const [notFound, setNotFound] = useState(false)
+  const [tags, setTags] = useState<string[]>(["fútbol", "barracas"])
   const [newTag, setNewTag] = useState("")
+  const [mounted, setMounted] = useState(false)
   const [formData, setFormData] = useState({
     title: "",
     excerpt: "",
@@ -38,6 +46,67 @@ export default function NuevaNoticiaPage() {
   const [dragActive, setDragActive] = useState(false)
   const [dragVideoActive, setDragVideoActive] = useState(false)
 
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  useEffect(() => {
+    if (!mounted) return
+    
+    const loadArticle = async () => {
+      try {
+        console.log('EditarNoticiaClient: Cargando artículo con ID:', articleId);
+        setIsLoading(true)
+        const loadedArticle = await getNewsById(articleId)
+        
+        if (loadedArticle) {
+          console.log('EditarNoticiaClient: Artículo cargado:', loadedArticle.title);
+          setArticle(loadedArticle)
+          setFormData({
+            title: loadedArticle.title || "",
+            excerpt: loadedArticle.excerpt || "",
+            content: loadedArticle.content || "",
+            category: loadedArticle.category || "",
+            author: loadedArticle.author || "",
+            featured: loadedArticle.featured || false,
+            slug: loadedArticle.slug || "",
+            imageUrl: loadedArticle.imageUrl || "",
+            videoUrl: loadedArticle.videoUrl || "",
+            images: loadedArticle.images || []
+          })
+          
+          // Asegurar que la imagen principal esté al principio del array
+          if (loadedArticle.imageUrl && loadedArticle.images) {
+            const images = [...(loadedArticle.images || [])]
+            const imageIndex = images.indexOf(loadedArticle.imageUrl)
+            if (imageIndex > 0) {
+              // Mover la imagen principal al principio
+              images.splice(imageIndex, 1)
+              images.unshift(loadedArticle.imageUrl)
+              setFormData(prev => ({
+                ...prev,
+                images: images
+              }))
+            }
+          }
+          setTags(loadedArticle.tags || [])
+        } else {
+          console.log('EditarNoticiaClient: Artículo no encontrado');
+          setNotFound(true)
+        }
+      } catch (error) {
+        console.error('Error loading article:', error)
+        setNotFound(true)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+    
+    if (articleId) {
+      loadArticle()
+    }
+  }, [articleId, mounted])
+
   const addTag = () => {
     if (newTag.trim() && !tags.includes(newTag.trim())) {
       setTags([...tags, newTag.trim()])
@@ -50,15 +119,20 @@ export default function NuevaNoticiaPage() {
   }
 
   const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    console.log('handleImageUpload: Función llamada');
     const files = event.target.files
-    if (!files || files.length === 0) return
+    console.log('handleImageUpload: Files seleccionados:', files?.length);
+    
+    if (!files || files.length === 0) {
+      console.log('handleImageUpload: No hay archivos, saliendo');
+      return
+    }
 
+    console.log('handleImageUpload: Iniciando subida de', files.length, 'archivos');
     setUploadingImage(true)
     try {
-      // Convertir FileList a Array y mantener el orden de selección
-      const filesArray = Array.from(files)
-      
-      const uploadPromises = filesArray.map(async (file) => {
+      const uploadPromises = Array.from(files).map(async (file) => {
+        console.log('handleImageUpload: Procesando archivo:', file.name);
         const result = await uploadFile(file)
         if (!result.success) {
           throw new Error(result.error || "Error al subir la imagen")
@@ -68,42 +142,42 @@ export default function NuevaNoticiaPage() {
 
       const uploadedUrls = await Promise.all(uploadPromises)
       
-      // Combinar imágenes existentes con las nuevas (nuevas al final)
+      // Si no hay imageUrl principal, usar la primera imagen subida
+      // Mantener la imagen principal existente si ya hay una
       const newImages = [...formData.images, ...uploadedUrls]
-      
-      // Debug: Ver qué imágenes se están guardando
-      console.log('Imágenes subidas:', uploadedUrls)
-      console.log('Imágenes existentes:', formData.images)
-      console.log('Array completo:', newImages)
-      
-      // Siempre usar la primera imagen del array completo como principal
-      const primaryImageUrl = newImages[0] || uploadedUrls[0]
-      
-      console.log('URL imagen principal:', primaryImageUrl)
+      const primaryImageUrl = formData.imageUrl || (uploadedUrls[0] || formData.imageUrl)
       
       setFormData({
         ...formData, 
-        imageUrl: primaryImageUrl,
-        images: newImages
+        images: newImages,
+        imageUrl: primaryImageUrl
       })
       
-      const message = files.length === 1 ? "Imagen subida correctamente" : `${files.length} imágenes subidas correctamente`
-      toast.success(message)
+      toast.success(`${uploadedUrls.length} imagen(es) subida(s) correctamente`)
     } catch (error) {
-      toast.error("Error al subir las imágenes")
+      console.error('Error uploading images:', error)
+      toast.error(error instanceof Error ? error.message : "Error al subir las imágenes")
     } finally {
       setUploadingImage(false)
     }
   }
 
   const handleVideoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    console.log('handleVideoUpload: Función llamada');
     const file = event.target.files?.[0]
-    if (!file) return
+    console.log('handleVideoUpload: Video seleccionado:', file?.name, 'Tamaño:', file?.size);
+    
+    if (!file) {
+      console.log('handleVideoUpload: No hay archivo, saliendo');
+      return
+    }
 
+    console.log('handleVideoUpload: Iniciando subida de video');
     setUploadingVideo(true)
     try {
       const result = await uploadFile(file)
-
+      console.log('handleVideoUpload: Resultado uploadFile:', result);
+      
       if (result.success) {
         setFormData({...formData, videoUrl: result.url})
         toast.success("Video subido correctamente")
@@ -111,6 +185,7 @@ export default function NuevaNoticiaPage() {
         toast.error(result.error || "Error al subir el video")
       }
     } catch (error) {
+      console.error('handleVideoUpload: Error:', error);
       toast.error("Error al subir el video")
     } finally {
       setUploadingVideo(false)
@@ -154,15 +229,7 @@ export default function NuevaNoticiaPage() {
       setUploadingImage(true)
       try {
         const uploadPromises = imageFiles.map(async (file) => {
-          const formData = new FormData()
-          formData.append('file', file)
-
-          const response = await fetch('/api/upload', {
-            method: 'POST',
-            body: formData
-          })
-
-          const result = await response.json()
+          const result = await uploadFile(file)
           if (!result.success) {
             throw new Error(result.error || "Error al subir la imagen")
           }
@@ -247,38 +314,86 @@ export default function NuevaNoticiaPage() {
     toast.success("Imagen establecida como principal")
   }
 
-  const handlePreview = () => {
-    // Aquí iría la lógica para mostrar vista previa
-    console.log("Mostrando vista previa...", formData)
-    // En una aplicación real, esto abriría una nueva ventana o modal con la vista previa
-  }
-
-  const handlePublish = async () => {
-    // Validar campos requeridos
-    if (!formData.title || !formData.excerpt || !formData.content || !formData.category || !formData.author) {
-      toast.error("Por favor completa todos los campos requeridos");
-      return;
-    }
-
-    // Debug: Ver qué se está guardando
-    console.log('FormData al publicar:', {
-      ...formData,
-      tags
-    });
-
+  const handleSave = async () => {
+    if (!article) return;
+    
     try {
-      // Crear la noticia
-      const newNews = await createNews({
+      const success = await updateNews(article.id, {
         ...formData,
         tags
       });
-
-      toast.success("Noticia publicada correctamente");
-      router.push('/admin/noticias');
+      
+      if (success) {
+        toast.success("Noticia actualizada correctamente");
+        router.push("/admin/noticias");
+      } else {
+        toast.error("Error al actualizar la noticia");
+      }
     } catch (error) {
-      console.error('Error al publicar noticia:', error);
-      toast.error("Error al publicar la noticia");
+      console.error('Error saving article:', error);
+      toast.error("Error al actualizar la noticia");
     }
+  }
+
+  const handleDelete = async () => {
+    if (!article) return;
+    
+    try {
+      const success = await deleteNews(article.id);
+      
+      if (success) {
+        toast.success("Noticia eliminada correctamente");
+        router.push("/admin/noticias");
+      } else {
+        toast.error("Error al eliminar la noticia");
+      }
+    } catch (error) {
+      console.error('Error deleting article:', error);
+      toast.error("Error al eliminar la noticia");
+    }
+  }
+
+  if (!mounted) {
+    return null // Retornar null en lugar de loading para evitar hydration mismatch
+  }
+
+  if (isLoading) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Cargando noticia...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (notFound) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold mb-4">Noticia no encontrada</h1>
+          <p className="text-muted-foreground mb-4">La noticia que intentas editar no existe.</p>
+          <Button asChild>
+            <Link href="/admin/noticias">Volver a noticias</Link>
+          </Button>
+        </div>
+      </div>
+    )
+  }
+
+  if (!article) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold mb-4">Noticia no encontrada</h1>
+          <p className="text-muted-foreground mb-4">La noticia que intentas editar no existe.</p>
+          <Button asChild>
+            <Link href="/admin/noticias">Volver a noticias</Link>
+          </Button>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -293,17 +408,37 @@ export default function NuevaNoticiaPage() {
         </Link>
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-serif font-bold mb-2">Nueva Noticia</h1>
-            <p className="text-muted-foreground">Completa los datos para publicar una nueva noticia</p>
+            <h1 className="text-3xl font-serif font-bold mb-2">Editar Noticia</h1>
+            <p className="text-muted-foreground">Modifica los datos de la noticia</p>
           </div>
           <div className="flex gap-2">
-            <Button variant="outline" className="gap-2 bg-transparent" onClick={handlePreview}>
+            <Button variant="outline" className="gap-2 bg-transparent">
               <Eye className="h-4 w-4" />
               Vista Previa
             </Button>
-            <Button className="gap-2" onClick={handlePublish}>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="destructive" className="gap-2">
+                  <Trash2 className="h-4 w-4" />
+                  Eliminar
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Esta acción no se puede deshacer. La noticia será eliminada permanentemente.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                  <AlertDialogAction onClick={handleDelete}>Eliminar</AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+            <Button className="gap-2" onClick={handleSave}>
               <Save className="h-4 w-4" />
-              Publicar
+              Guardar Cambios
             </Button>
           </div>
         </div>
@@ -374,9 +509,9 @@ export default function NuevaNoticiaPage() {
                             size="sm"
                             onClick={() => setAsPrimary(index)}
                             className="text-xs"
-                            disabled={index === 0}
+                            disabled={image === formData.imageUrl}
                           >
-                            {index === 0 ? "Principal" : "Principal"}
+                            {image === formData.imageUrl ? "Principal" : "Principal"}
                           </Button>
                           <Button
                             type="button"
@@ -409,18 +544,24 @@ export default function NuevaNoticiaPage() {
                   >
                     <input
                       type="file"
-                      id="image-upload"
+                      id="image-upload-more"
                       accept="image/*"
                       multiple
-                      onChange={handleImageUpload}
+                      onChange={(e) => {
+                        console.log('Input secundario onChange disparado');
+                        handleImageUpload(e);
+                      }}
                       className="hidden"
                       disabled={uploadingImage}
                       onClick={(e) => e.stopPropagation()}
                     />
                     <label 
-                      htmlFor="image-upload" 
+                      htmlFor="image-upload-more" 
                       className="cursor-pointer flex flex-col items-center"
-                      onClick={(e) => e.stopPropagation()}
+                      onClick={(e) => {
+                        console.log('Label secundario clickeado - debería abrir el selector de archivos');
+                        e.stopPropagation()
+                      }}
                     >
                       {uploadingImage ? (
                         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mb-2"></div>
@@ -435,41 +576,47 @@ export default function NuevaNoticiaPage() {
                   </div>
                 </div>
               ) : (
-                  <div 
-                    className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
-                      dragActive ? 'border-primary bg-primary/5' : 'border-muted-foreground/25 hover:border-primary'
-                    }`}
-                    onDragEnter={handleDrag}
-                    onDragLeave={handleDrag}
-                    onDragOver={handleDrag}
-                    onDrop={handleDrop}
+                <div 
+                  className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
+                    dragActive ? 'border-primary bg-primary/5' : 'border-muted-foreground/25 hover:border-primary'
+                  }`}
+                  onDragEnter={handleDrag}
+                  onDragLeave={handleDrag}
+                  onDragOver={handleDrag}
+                  onDrop={handleDrop}
+                >
+                  <input
+                    type="file"
+                    id="image-upload-main"
+                    accept="image/*"
+                    multiple
+                    onChange={(e) => {
+                      console.log('Input principal onChange disparado');
+                      handleImageUpload(e);
+                    }}
+                    className="hidden"
+                    disabled={uploadingImage}
+                    onClick={(e) => e.stopPropagation()}
+                  />
+                  <label 
+                    htmlFor="image-upload-main" 
+                    className="cursor-pointer flex flex-col items-center"
+                    onClick={(e) => {
+                      console.log('Label principal clickeado');
+                      e.stopPropagation()
+                    }}
                   >
-                    <input
-                      type="file"
-                      id="image-upload"
-                      accept="image/*"
-                      multiple
-                      onChange={handleImageUpload}
-                      className="hidden"
-                      disabled={uploadingImage}
-                      onClick={(e) => e.stopPropagation()}
-                    />
-                    <label 
-                      htmlFor="image-upload" 
-                      className="cursor-pointer flex flex-col items-center"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      {uploadingImage ? (
-                        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mb-4"></div>
-                      ) : (
-                        <ImageIcon className="h-12 w-12 mb-4 text-muted-foreground" />
-                      )}
-                      <p className="text-sm text-muted-foreground mb-2">
-                        {uploadingImage ? "Subiendo imágenes..." : "Haz clic para subir o arrastra imágenes"}
-                      </p>
-                      <p className="text-xs text-muted-foreground">PNG, JPG, WebP hasta 5MB (múltiple permitido)</p>
-                    </label>
-                  </div>
+                    {uploadingImage ? (
+                      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mb-4"></div>
+                    ) : (
+                      <ImageIcon className="h-12 w-12 mb-4 text-muted-foreground" />
+                    )}
+                    <p className="text-sm text-muted-foreground mb-2">
+                      {uploadingImage ? "Subiendo imágenes..." : "Haz clic para subir o arrastra imágenes"}
+                    </p>
+                    <p className="text-xs text-muted-foreground">PNG, JPG, WebP hasta 5MB (múltiple permitido)</p>
+                  </label>
+                </div>
               )}
             </CardContent>
           </Card>
@@ -509,7 +656,10 @@ export default function NuevaNoticiaPage() {
                     type="file"
                     id="video-upload"
                     accept="video/*"
-                    onChange={handleVideoUpload}
+                    onChange={(e) => {
+                      console.log('Input video onChange disparado');
+                      handleVideoUpload(e);
+                    }}
                     className="hidden"
                     disabled={uploadingVideo}
                     onClick={(e) => e.stopPropagation()}
@@ -517,7 +667,10 @@ export default function NuevaNoticiaPage() {
                   <label 
                     htmlFor="video-upload" 
                     className="cursor-pointer flex flex-col items-center"
-                    onClick={(e) => e.stopPropagation()}
+                    onClick={(e) => {
+                      console.log('Label video clickeado');
+                      e.stopPropagation()
+                    }}
                   >
                     {uploadingVideo ? (
                       <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mb-4"></div>
@@ -580,9 +733,9 @@ export default function NuevaNoticiaPage() {
               </div>
 
               <div className="pt-4 border-t">
-                <p className="text-sm text-muted-foreground mb-2">Estado: Borrador</p>
+                <p className="text-sm text-muted-foreground mb-2">Estado: Publicado</p>
                 <p className="text-xs text-muted-foreground">
-                  La noticia se publicará inmediatamente al hacer clic en "Publicar"
+                  La noticia está publicada y visible para todos los usuarios
                 </p>
               </div>
             </CardContent>

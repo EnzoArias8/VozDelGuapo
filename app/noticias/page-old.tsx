@@ -10,20 +10,15 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Clock, User, Tag, ArrowLeft, Share2, Facebook, Twitter } from "lucide-react"
 import { XIcon } from "@/components/ui/x-icon"
 import { Button } from "@/components/ui/button"
-import { getArticleVisits } from "@/hooks/use-visit-tracker"
+import { useVisitTracker, getArticleVisits } from "@/hooks/use-visit-tracker"
 
 const formatCategory = (category: string) => {
   const categoryMap: { [key: string]: string } = {
-    'primera': 'Liga Profesional',
-    'liga-profesional': 'Liga Profesional',
-    'copa-argentina': 'Copa Argentina',
-    'copa argentina': 'Copa Argentina',
-    'pretemporada': 'Copa Sudamericana',
-    'copa-sudamericana': 'Copa Sudamericana',
-    'inferiores': 'Reserva',
-    'reserva': 'Reserva',
-    'entrevistas': 'Entrevistas',
+    'primera': 'Primera División',
     'mercado': 'Mercado de Pases',
+    'pretemporada': 'Pretemporada',
+    'entrevistas': 'Entrevistas',
+    'inferiores': 'Inferiores',
     'institucional': 'Institucional'
   }
   
@@ -32,28 +27,21 @@ const formatCategory = (category: string) => {
 
 const normalizeCategory = (category: string) => {
   const normalizedMap: { [key: string]: string } = {
-    'liga profesional': 'liga-profesional',
-    'liga-profesional': 'liga-profesional',
-    'primera': 'liga-profesional',
-    'primera division': 'liga-profesional',
-    'primera-division': 'liga-profesional',
-    'primera división': 'liga-profesional',
-    'copa argentina': 'copa-argentina',
-    'copa-argentina': 'copa-argentina',
-    'copa sudamericana': 'copa-sudamericana',
-    'copa-sudamericana': 'copa-sudamericana',
-    'pretemporada': 'copa-sudamericana',
-    'reserva': 'reserva',
-    'inferiores': 'reserva',
+    'primera': 'primera',
+    'primera division': 'primera',
+    'primera': 'primera',
+    'primera-division': 'primera',
+    'primera división': 'primera',
+    'primera-división': 'primera',
     'mercado': 'mercado',
     'mercado de pases': 'mercado',
     'mercado-pases': 'mercado',
+    'pretemporada': 'pretemporada',
     'entrevistas': 'entrevistas',
+    'inferiores': 'inferiores',
     'institucional': 'institucional'
   }
-  const normalized = normalizedMap[category.toLowerCase().trim()] || 
-                  normalizedMap[category.toLowerCase().replace(/\s+/g, '-')] ||
-                  category.toLowerCase().replace(/\s+/g, '-').trim()
+  const normalized = normalizedMap[category.toLowerCase().trim()] || category.toLowerCase().trim()
   return normalized
 }
 
@@ -95,7 +83,7 @@ export default function NoticiasPage() {
           }
           
           setArticle(foundArticle);
-          const related = (news || []).filter((a) => normalizeCategory(a.category) === normalizeCategory(foundArticle.category) && a.id !== foundArticle.id).slice(0, 3);
+          const related = (news || []).filter((a) => a.category === foundArticle.category && a.id !== foundArticle.id).slice(0, 3);
           setRelatedNews(related);
           setArticleVisits(getArticleVisits(foundArticle.id));
           setIsLoading(false);
@@ -112,64 +100,10 @@ export default function NoticiasPage() {
   useEffect(() => {
     if (!mounted || !slug) return;
     
-    // Activar seguimiento de visitas para esta noticia (lógica directa del hook)
-    if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
-      // Registrar visita general del sitio
-      const siteStatsKey = 'site-stats'
-      const storedStats = localStorage.getItem(siteStatsKey)
-      
-      if (storedStats) {
-        const stats = JSON.parse(storedStats)
-        const today = new Date().toDateString()
-        
-        // Resetear contador diario si es un nuevo día
-        if (stats.lastReset !== today) {
-          stats.today = 1
-          stats.lastReset = today
-        } else {
-          stats.today += 1
-        }
-        
-        stats.total += 1
-        localStorage.setItem(siteStatsKey, JSON.stringify(stats))
-      } else {
-        // Primera visita
-        const initialStats = {
-          total: 1,
-          today: 1,
-          lastReset: new Date().toDateString()
-        }
-        localStorage.setItem(siteStatsKey, JSON.stringify(initialStats))
-      }
-
-      // Registrar visita individual de noticia
-      const articleStatsKey = `article-${slug}-visits`
-      const storedArticleVisits = localStorage.getItem(articleStatsKey)
-      
-      if (storedArticleVisits) {
-        const visits = parseInt(storedArticleVisits) + 1
-        localStorage.setItem(articleStatsKey, visits.toString())
-      } else {
-        localStorage.setItem(articleStatsKey, '1')
-      }
-    }
+    // Activar seguimiento de visitas para esta noticia
+    useVisitTracker(slug)
   }, [mounted, slug])
-
-  // Vista de listado de noticias (cuando no hay slug)
-  const filteredNews = categoria 
-    ? allNews.filter(article => normalizeCategory(article.category) === normalizeCategory(categoria))
-    : allNews;
-
-  if (!mounted) {
-    return (
-      <div className="container mx-auto px-4 py-8">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Cargando...</p>
-        </div>
-      </div>
-    )
-  }
+  }, [slug])
 
   // Si hay slug, mostrar la noticia individual
   if (slug) {
@@ -260,10 +194,8 @@ export default function NoticiasPage() {
                   size="icon" 
                   className="h-8 w-8 bg-transparent"
                   onClick={() => {
-                    if (typeof window !== 'undefined') {
-                      const url = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(window.location.href)}`
-                      window.open(url, '_blank', 'width=600,height=400')
-                    }
+                    const url = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(window.location.href)}`
+                    window.open(url, '_blank', 'width=600,height=400')
                   }}
                 >
                   <Facebook className="h-4 w-4" />
@@ -273,10 +205,8 @@ export default function NoticiasPage() {
                   size="icon" 
                   className="h-8 w-8 bg-transparent"
                   onClick={() => {
-                    if (typeof window !== 'undefined') {
-                      const url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(article.title)}&url=${encodeURIComponent(window.location.href)}`
-                      window.open(url, '_blank', 'width=600,height=400')
-                    }
+                    const url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(article.title)}&url=${encodeURIComponent(window.location.href)}`
+                    window.open(url, '_blank', 'width=600,height=400')
                   }}
                 >
                   <XIcon className="h-4 w-4" />
@@ -286,10 +216,8 @@ export default function NoticiasPage() {
                   size="icon" 
                   className="h-8 w-8 bg-transparent"
                   onClick={() => {
-                    if (typeof window !== 'undefined') {
-                      navigator.clipboard.writeText(window.location.href)
-                      alert('¡Enlace copiado al portapapeles!')
-                    }
+                    navigator.clipboard.writeText(window.location.href)
+                    alert('¡Enlace copiado al portapapeles!')
                   }}
                 >
                   <Share2 className="h-4 w-4" />
@@ -315,27 +243,6 @@ export default function NoticiasPage() {
                 className="text-lg leading-relaxed"
               />
             </div>
-
-            {/* Additional Images */}
-            {article.images && Array.isArray(article.images) && article.images.length > 0 && (
-              <div className="mb-8">
-                <h3 className="text-xl font-serif font-bold mb-4">Imágenes</h3>
-                <div className="space-y-4">
-                  {(article.images || [])
-                    .filter((image: string) => image && image !== article.imageUrl) // Excluir imagen principal y vacíos
-                    .map((image: string, index: number) => (
-                      <div key={index} className="relative aspect-[16/9] rounded-lg overflow-hidden">
-                        <Image 
-                          src={image} 
-                          alt={`Imagen adicional ${index + 1} de ${article.title}`}
-                          fill
-                          className="object-cover"
-                        />
-                      </div>
-                    ))}
-                </div>
-              </div>
-            )}
 
             {/* Tags */}
             <div className="flex items-center gap-2 flex-wrap pt-6 border-t">
@@ -384,7 +291,11 @@ export default function NoticiasPage() {
     )
   }
 
-  // Vista de listado de noticias
+  // Vista de listado de noticias (cuando no hay slug)
+  const filteredNews = categoria 
+    ? allNews.filter(article => normalizeCategory(article.category) === normalizeCategory(categoria))
+    : allNews;
+
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="mb-8">
@@ -400,6 +311,14 @@ export default function NoticiasPage() {
             : 'Las últimas novedades de Barracas Central'
           }
         </p>
+        {categoria && (
+          <Link 
+            href="/noticias" 
+            className="inline-flex items-center gap-2 text-sm text-primary hover:text-primary/80 transition-colors mt-2"
+          >
+            ← Ver todas las noticias
+          </Link>
+        )}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -421,22 +340,19 @@ export default function NoticiasPage() {
                   </Badge>
                   <div className="flex items-center gap-1 text-xs text-muted-foreground">
                     <Clock className="h-3 w-3" />
-                    {new Date(news.publishedAt).toLocaleDateString('es-AR', {
-                      day: 'numeric',
-                      month: 'short',
-                      year: 'numeric'
+                    {new Date(news.publishedAt).toLocaleDateString("es-AR", {
+                      day: "numeric",
+                      month: "short",
                     })}
                   </div>
                 </div>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <h3 className="font-semibold text-sm group-hover:text-primary transition-colors text-balance leading-tight line-clamp-2">
+                <h3 className="text-lg font-serif font-bold group-hover:text-primary transition-colors text-balance leading-tight line-clamp-2">
                   {news.title}
                 </h3>
-                <p className="text-sm text-muted-foreground line-clamp-2 text-pretty">
+                <p className="text-sm text-muted-foreground line-clamp-2 mt-2">
                   {news.excerpt}
                 </p>
-              </CardContent>
+              </CardHeader>
             </Card>
           </Link>
         ))}

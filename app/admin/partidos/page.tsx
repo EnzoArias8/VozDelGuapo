@@ -5,7 +5,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Plus, Pencil, Trash2, Calendar } from "lucide-react"
-import { mockMatches, Match } from "@/lib/mock-data"
+import { getMatches, createMatch, updateMatch, deleteMatch, Match } from "@/lib/data-manager"
 import {
   Dialog,
   DialogContent,
@@ -37,7 +37,8 @@ import {
 } from "@/components/ui/select"
 
 export default function AdminPartidosPage() {
-  const [matches, setMatches] = useState<Match[]>(mockMatches)
+  const [matches, setMatches] = useState<Match[]>([])
+  const [loading, setLoading] = useState(true)
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [editingMatch, setEditingMatch] = useState<Match | null>(null)
@@ -51,42 +52,54 @@ export default function AdminPartidosPage() {
   })
 
   useEffect(() => {
-    fetchMatches()
-  }, [])
-
-  const fetchMatches = async () => {
-    try {
-      const response = await fetch('/api/matches')
-      if (response.ok) {
-        const data = await response.json()
-        setMatches(data)
+    const loadMatches = async () => {
+      try {
+        setLoading(true)
+        const matchesData = await getMatches()
+        setMatches(matchesData)
+      } catch (error) {
+        console.error('Error loading matches:', error)
+      } finally {
+        setLoading(false)
       }
-    } catch (error) {
-      console.error('Error fetching matches:', error)
     }
-  }
+    
+    loadMatches()
+  }, [])
 
   const upcomingMatches = matches.filter((m) => m.status === "upcoming")
   const playedMatches = matches.filter((m) => m.status === "finished")
 
   const handleEditMatch = (match: Match) => {
-    setEditingMatch(match)
+    // Convertir la fecha con timezone a formato datetime-local
+    // La fecha viene como ISO string con timezone, necesitamos convertirla
+    const matchDate = new Date(match.date);
+    const formattedMatch = {
+      ...match,
+      date: matchDate.toISOString().slice(0, 16) // YYYY-MM-DDTHH:MM
+    }
+    setEditingMatch(formattedMatch)
     setIsEditDialogOpen(true)
   }
 
   const handleUpdateMatch = async () => {
     if (editingMatch) {
       try {
-        const response = await fetch('/api/matches', {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(editingMatch),
-        })
+        // Si se agregaron resultados y el estado no es "finished", cambiarlo automáticamente
+        let updatedMatch = {
+          ...editingMatch,
+          date: editingMatch.date ? new Date(editingMatch.date).toISOString().slice(0, 16) : ''
+        }
         
-        if (response.ok) {
-          await fetchMatches() // Refresh the list
+        // Solo cambiar a "finished" si el usuario lo selecciona explícitamente
+        if (editingMatch.status === "finished") {
+          updatedMatch.status = "finished"
+        }
+        
+        const success = await updateMatch(editingMatch.id, updatedMatch)
+        if (success) {
+          const matchesData = await getMatches()
+          setMatches(matchesData)
           setIsEditDialogOpen(false)
           setEditingMatch(null)
         }
@@ -98,16 +111,25 @@ export default function AdminPartidosPage() {
 
   const handleDeleteMatch = async (matchId: string) => {
     try {
-      const response = await fetch(`/api/matches?id=${matchId}`, {
-        method: 'DELETE',
-      })
-      
-      if (response.ok) {
-        await fetchMatches() // Refresh the list
+      const success = await deleteMatch(matchId)
+      if (success) {
+        const matchesData = await getMatches()
+        setMatches(matchesData)
       }
     } catch (error) {
       console.error('Error deleting match:', error)
     }
+  }
+
+  if (loading) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Cargando partidos...</p>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -194,6 +216,34 @@ export default function AdminPartidosPage() {
                   />
                 </div>
                 <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="homeScore" className="text-right">
+                    Goles Local
+                  </Label>
+                  <Input
+                    id="homeScore"
+                    type="number"
+                    min="0"
+                    value={newMatch.homeScore || ''}
+                    onChange={(e) => setNewMatch({ ...newMatch, homeScore: e.target.value === '' ? undefined : parseInt(e.target.value) })}
+                    className="col-span-3"
+                    placeholder="Ej: 2"
+                  />
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="awayScore" className="text-right">
+                    Goles Visitante
+                  </Label>
+                  <Input
+                    id="awayScore"
+                    type="number"
+                    min="0"
+                    value={newMatch.awayScore || ''}
+                    onChange={(e) => setNewMatch({ ...newMatch, awayScore: e.target.value === '' ? undefined : parseInt(e.target.value) })}
+                    className="col-span-3"
+                    placeholder="Ej: 1"
+                  />
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
                   <Label htmlFor="status" className="text-right">
                     Estado
                   </Label>
@@ -235,16 +285,10 @@ export default function AdminPartidosPage() {
                   onClick={async () => {
                     if (newMatch.home && newMatch.away && newMatch.date && newMatch.tournament && newMatch.stadium) {
                       try {
-                        const response = await fetch('/api/matches', {
-                          method: 'POST',
-                          headers: {
-                            'Content-Type': 'application/json',
-                          },
-                          body: JSON.stringify(newMatch),
-                        })
-                        
-                        if (response.ok) {
-                          await fetchMatches() // Refresh the list
+                        const createdMatch = await createMatch(newMatch as Omit<Match, 'id'>)
+                        if (createdMatch) {
+                          const matchesData = await getMatches()
+                          setMatches(matchesData)
                           setIsAddDialogOpen(false)
                           setNewMatch({
                             home: "",
@@ -341,6 +385,34 @@ export default function AdminPartidosPage() {
                 />
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="edit-homeScore" className="text-right">
+                  Goles Local
+                </Label>
+                <Input
+                  id="edit-homeScore"
+                  type="number"
+                  min="0"
+                  value={editingMatch.homeScore || ""}
+                  onChange={(e) => setEditingMatch({ ...editingMatch, homeScore: e.target.value === '' ? undefined : parseInt(e.target.value) })}
+                  className="col-span-3"
+                  placeholder="Ej: 2"
+                />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="edit-awayScore" className="text-right">
+                  Goles Visitante
+                </Label>
+                <Input
+                  id="edit-awayScore"
+                  type="number"
+                  min="0"
+                  value={editingMatch.awayScore || ""}
+                  onChange={(e) => setEditingMatch({ ...editingMatch, awayScore: e.target.value === '' ? undefined : parseInt(e.target.value) })}
+                  className="col-span-3"
+                  placeholder="Ej: 1"
+                />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="edit-status" className="text-right">
                   Estado
                 </Label>
@@ -358,36 +430,6 @@ export default function AdminPartidosPage() {
                   </SelectContent>
                 </Select>
               </div>
-              {(editingMatch.status === "finished" || editingMatch.status === "live") && (
-                <>
-                  <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="edit-homeScore" className="text-right">
-                      Goles Local
-                    </Label>
-                    <Input
-                      id="edit-homeScore"
-                      type="number"
-                      value={editingMatch.homeScore || ""}
-                      onChange={(e) => setEditingMatch({ ...editingMatch, homeScore: parseInt(e.target.value) || undefined })}
-                      className="col-span-3"
-                      placeholder="0"
-                    />
-                  </div>
-                  <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="edit-awayScore" className="text-right">
-                      Goles Visitante
-                    </Label>
-                    <Input
-                      id="edit-awayScore"
-                      type="number"
-                      value={editingMatch.awayScore || ""}
-                      onChange={(e) => setEditingMatch({ ...editingMatch, awayScore: parseInt(e.target.value) || undefined })}
-                      className="col-span-3"
-                      placeholder="0"
-                    />
-                  </div>
-                </>
-              )}
             </div>
           )}
           <DialogFooter>
@@ -437,9 +479,32 @@ export default function AdminPartidosPage() {
                         <p className="font-bold text-lg">{match.home}</p>
                       </div>
                       <div className="text-center px-6">
-                        <p className="text-sm text-muted-foreground mb-1">{new Date(match.date).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' })}</p>
-                        <p className="text-2xl font-bold">VS</p>
-                        <p className="text-sm text-muted-foreground mt-1">{new Date(match.date).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}</p>
+                        <p className="text-sm text-muted-foreground mb-1">
+                          {new Date(match.date).toLocaleDateString('es-AR', { 
+                            day: '2-digit', 
+                            month: '2-digit', 
+                            year: 'numeric',
+                            timeZone: 'America/Argentina/Buenos_Aires'
+                          })}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {new Date(match.date).toLocaleTimeString('es-AR', { 
+                            hour: '2-digit', 
+                            minute: '2-digit',
+                            hour12: false,
+                            timeZone: 'America/Argentina/Buenos_Aires'
+                          })} hs
+                        </p>
+                        {match.status === "finished" && match.homeScore !== undefined && match.awayScore !== undefined ? (
+                          <div className="flex items-center gap-2 justify-center">
+                            <span className="text-2xl font-bold">{match.homeScore || 0}</span>
+                            <span className="text-lg font-semibold">-</span>
+                            <span className="text-2xl font-bold">{match.awayScore || 0}</span>
+                          </div>
+                        ) : (
+                          <p className="text-2xl font-bold">VS</p>
+                        )}
+                        <p className="text-sm text-muted-foreground mt-1">{match.stadium}</p>
                       </div>
                       <div className="text-center flex-1">
                         <p className="font-bold text-lg">{match.away}</p>
@@ -500,7 +565,22 @@ export default function AdminPartidosPage() {
                         <p className="text-3xl font-bold">{match.homeScore || 0}</p>
                       </div>
                       <div className="text-center px-6">
-                        <p className="text-sm text-muted-foreground mb-1">{new Date(match.date).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' })}</p>
+                        <p className="text-sm text-muted-foreground mb-1">
+                          {new Date(match.date).toLocaleDateString('es-AR', { 
+                            day: '2-digit', 
+                            month: '2-digit', 
+                            year: 'numeric',
+                            timeZone: 'America/Argentina/Buenos_Aires'
+                          })}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {new Date(match.date).toLocaleTimeString('es-AR', { 
+                            hour: '2-digit', 
+                            minute: '2-digit',
+                            hour12: false,
+                            timeZone: 'America/Argentina/Buenos_Aires'
+                          })} hs
+                        </p>
                         <p className="text-xl font-bold text-muted-foreground">-</p>
                       </div>
                       <div className="text-center flex-1">

@@ -3,46 +3,130 @@
 import { useState, useEffect } from "react"
 import Image from "next/image"
 import Link from "next/link"
-import { mockNews } from "@/lib/mock-data"
 import { getNews, getWebsiteNews, getFeaturedNews } from "@/lib/data-manager"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Clock } from "lucide-react"
-import { useVisitTracker } from "@/hooks/use-visit-tracker"
 
 const formatCategory = (category: string) => {
   const categoryMap: { [key: string]: string } = {
-    'primera': 'Primera División',
-    'mercado': 'Mercado de Pases',
-    'pretemporada': 'Pretemporada',
+    'primera': 'Liga Profesional',
+    'liga-profesional': 'Liga Profesional',
+    'copa-argentina': 'Copa Argentina',
+    'copa argentina': 'Copa Argentina',
+    'pretemporada': 'Copa Sudamericana',
+    'copa-sudamericana': 'Copa Sudamericana',
+    'inferiores': 'Reserva',
+    'reserva': 'Reserva',
     'entrevistas': 'Entrevistas',
-    'inferiores': 'Inferiores',
+    'mercado': 'Mercado de Pases',
     'institucional': 'Institucional'
   }
   
   return categoryMap[category.toLowerCase()] || category.charAt(0).toUpperCase() + category.slice(1)
 }
 
+const normalizeCategory = (category: string) => {
+  const normalizedMap: { [key: string]: string } = {
+    'liga profesional': 'liga-profesional',
+    'liga-profesional': 'liga-profesional',
+    'primera': 'liga-profesional',
+    'primera division': 'liga-profesional',
+    'primera-division': 'liga-profesional',
+    'primera división': 'liga-profesional',
+    'copa argentina': 'copa-argentina',
+    'copa-argentina': 'copa-argentina',
+    'copa sudamericana': 'copa-sudamericana',
+    'copa-sudamericana': 'copa-sudamericana',
+    'pretemporada': 'copa-sudamericana',
+    'reserva': 'reserva',
+    'inferiores': 'reserva',
+    'mercado': 'mercado',
+    'mercado de pases': 'mercado',
+    'mercado-pases': 'mercado',
+    'entrevistas': 'entrevistas',
+    'institucional': 'institucional'
+  }
+  const normalized = normalizedMap[category.toLowerCase().trim()] || 
+                  normalizedMap[category.toLowerCase().replace(/\s+/g, '-')] ||
+                  category.toLowerCase().replace(/\s+/g, '-').trim()
+  return normalized
+}
+
+const getCategoryStyle = (category: string) => {
+  // Todas las categorías usan el mismo estilo rojo
+  return 'bg-red-500 text-white border-red-500 hover:bg-red-600 hover:border-red-600'
+}
+
 export default function HomePage() {
   const [news, setNews] = useState<any[]>([])
   const [showLoading, setShowLoading] = useState(true)
+  const [mounted, setMounted] = useState(false)
 
-  // Activar seguimiento de visitas
-  useVisitTracker()
+  // Evitar hydration mismatch
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   useEffect(() => {
-    // Cargar noticias
-    const storedNews = getNews();
-    const allNews = storedNews.length === 0 ? mockNews : storedNews;
-    setNews(allNews);
+    if (!mounted) return
+    
+    // Activar seguimiento de visitas (lógica directa del hook)
+    if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
+      const siteStatsKey = 'site-stats'
+      const storedStats = localStorage.getItem(siteStatsKey)
+      
+      if (storedStats) {
+        const stats = JSON.parse(storedStats)
+        const today = new Date().toDateString()
+        
+        // Resetear contador diario si es un nuevo día
+        if (stats.lastReset !== today) {
+          stats.today = 1
+          stats.lastReset = today
+        } else {
+          stats.today += 1
+        }
+        
+        stats.total += 1
+        localStorage.setItem(siteStatsKey, JSON.stringify(stats))
+      } else {
+        // Primera visita
+        const initialStats = {
+          total: 1,
+          today: 1,
+          lastReset: new Date().toDateString()
+        }
+        localStorage.setItem(siteStatsKey, JSON.stringify(initialStats))
+      }
+    }
+    
+    // No mostrar pantalla de carga si el usuario viene directamente de una noticia
+    if (typeof window !== 'undefined' && window.location.pathname !== '/') {
+      setShowLoading(false)
+      return
+    }
 
-    // Ocultar pantalla de carga después de 5 segundos
+    // Cargar noticias
+    const loadNews = async () => {
+      try {
+        const storedNews = await getNews();
+        setNews(storedNews.length === 0 ? [] : storedNews);
+      } catch (error) {
+        console.error('Error loading news:', error);
+        setNews([]);
+      }
+    };
+    
+    loadNews();
+
+    // Ocultar pantalla de carga después de 1 segundo
     const timer = setTimeout(() => {
       setShowLoading(false)
-    }, 5000)
+    }, 1000)
 
     return () => clearTimeout(timer)
-  }, [])
+  }, [mounted])
 
   // Mostrar pantalla de carga personalizada
   if (showLoading) {
@@ -103,10 +187,10 @@ export default function HomePage() {
           {/* Featured Article */}
           {featuredNews && (
             <div className="lg:col-span-2">
-              <Link href={`/noticias/${featuredNews.slug}`}>
+              <Link href={`/noticias/?slug=${featuredNews.slug}`}>
                 <Card className="group cursor-pointer overflow-hidden hover:shadow-lg transition-all duration-300 border-0 h-full">
                   <div className="relative">
-                    <div className="aspect-video md:aspect-[16/9] overflow-hidden">
+                    <div className="aspect-[16/9] overflow-hidden">
                       <Image
                         src={featuredNews.imageUrl}
                         alt={featuredNews.title}
@@ -116,7 +200,7 @@ export default function HomePage() {
                     </div>
                     <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent" />
                     <div className="absolute bottom-0 left-0 right-0 p-6">
-                      <Badge variant="secondary" className="mb-2">
+                      <Badge className="mb-2 bg-[#E30613] text-white hover:bg-[#B80510] transition-colors">
                         {formatCategory(featuredNews.category)}
                       </Badge>
                       <h2 className="text-2xl md:text-3xl font-bold text-white mb-2 line-clamp-2">
@@ -135,10 +219,10 @@ export default function HomePage() {
           {/* Secondary News */}
           <div className="space-y-4">
             {secondaryNews.map((article) => (
-              <Link key={article.id} href={`/noticias/${article.slug}`}>
+              <Link key={article.id} href={`/noticias/?slug=${article.slug}`}>
                 <Card className="group cursor-pointer overflow-hidden hover:shadow-lg transition-all duration-300 border-0">
                   <div className="relative">
-                    <div className="aspect-[4/3] overflow-hidden">
+                    <div className="aspect-[16/9] overflow-hidden">
                       <Image
                         src={article.imageUrl}
                         alt={article.title}
@@ -148,10 +232,10 @@ export default function HomePage() {
                     </div>
                     <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent" />
                     <div className="absolute bottom-0 left-0 right-0 p-4">
-                      <Badge variant="secondary" className="mb-2 text-xs">
+                      <Badge className="mb-2 text-xs bg-[#E30613] text-white hover:bg-[#B80510] transition-colors">
                         {formatCategory(article.category)}
                       </Badge>
-                      <h3 className="text-lg font-bold text-white mb-1 line-clamp-2">
+                      <h3 className="font-bold text-white text-sm line-clamp-2">
                         {article.title}
                       </h3>
                     </div>
@@ -166,17 +250,21 @@ export default function HomePage() {
       {/* Categories Section */}
       <section className="mb-12">
         <h2 className="text-2xl font-bold mb-6">Categorías</h2>
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-          {["Primera División", "Mercado de Pases", "Pretemporada", "Entrevistas", "Inferiores", "Institucional"].map(
-            (category) => (
-              <Link
-                key={category}
-                href={`/noticias?categoria=${category.toLowerCase().replace(" ", "-")}`}
-                className="p-4 border rounded-lg hover:border-primary hover:bg-primary/5 transition-colors text-center"
-              >
-                <span className="font-medium text-sm">{category}</span>
-              </Link>
-            ),
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-4">
+          {["Liga Profesional", "Copa Argentina", "Copa Sudamericana", "Reserva", "Entrevistas", "Mercado de Pases", "Institucional"].map(
+            (category) => {
+              const normalized = normalizeCategory(category)
+              console.log(`Categoría: ${category} -> Normalizada: ${normalized}`)
+              return (
+                <Link
+                  key={category}
+                  href={`/noticias/?categoria=${normalized}`}
+                  className={`p-4 border rounded-lg hover:border-primary hover:bg-primary/5 transition-colors text-center flex items-center justify-center min-h-[80px] ${getCategoryStyle(category)}`}
+                >
+                  <span className="font-medium text-sm leading-tight">{category}</span>
+                </Link>
+              )
+            }
           )}
         </div>
       </section>
@@ -194,7 +282,7 @@ export default function HomePage() {
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {recentNews.map((article) => (
-            <Link key={article.id} href={`/noticias/${article.slug}`}>
+            <Link key={article.id} href={`/noticias/?slug=${article.slug}`}>
               <Card className="group cursor-pointer overflow-hidden hover:shadow-lg transition-all duration-300">
                 <div className="relative">
                   <div className="aspect-[16/9] overflow-hidden">
@@ -207,7 +295,7 @@ export default function HomePage() {
                   </div>
                   <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent" />
                   <div className="absolute bottom-0 left-0 right-0 p-4">
-                    <Badge variant="secondary" className="mb-2 text-xs">
+                    <Badge className="mb-2 text-xs bg-[#E30613] text-white hover:bg-[#B80510] transition-colors">
                       {formatCategory(article.category)}
                     </Badge>
                     <h3 className="text-lg font-bold text-white mb-1 line-clamp-2">

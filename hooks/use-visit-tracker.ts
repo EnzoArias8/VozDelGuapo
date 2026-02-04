@@ -10,6 +10,9 @@ interface VisitStats {
 
 export function useVisitTracker(articleId?: string) {
   useEffect(() => {
+    // Solo ejecutar en el cliente
+    if (typeof window === 'undefined' || typeof localStorage === 'undefined') return
+    
     // Registrar visita general del sitio
     const siteStatsKey = 'site-stats'
     const storedStats = localStorage.getItem(siteStatsKey)
@@ -54,6 +57,9 @@ export function useVisitTracker(articleId?: string) {
 }
 
 export function getArticleVisits(articleId: string): number {
+  // Solo ejecutar en el cliente
+  if (typeof window === 'undefined' || typeof localStorage === 'undefined') return 0
+  
   const visits = localStorage.getItem(`article-${articleId}-visits`)
   return visits ? parseInt(visits) : 0
 }
