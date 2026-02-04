@@ -314,7 +314,6 @@ Este proyecto está bajo la Licencia MIT. Mira el archivo [LICENSE](LICENSE) par
 
 ## 🙏 Agradecimientos
 
-- **Club Atlético Barracas Central** - Por permitirnos crear su sitio oficial
 - **Supabase** - Por la excelente plataforma backend
 - **Vercel** - Por el increíble hosting de Next.js
 - **shadcn/ui** - Por los hermosos componentes UI
