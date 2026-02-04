@@ -1,4 +1,4 @@
-# ⚽ Voz del Guapo - Sitio Web Oficial
+# ⚽ Voz del Guapo - Sitio Web 
 
 > **Tu fuente de información sobre el Club Atlético Barracas Central. Noticias, plantilla, fixture y más.**
 
@@ -24,7 +24,7 @@
 
 ### 🏠 **Página Principal**
 - **Noticias Destacadas**: Sistema de noticias con destacadas principales
-- **Categorías Organizadas**: Copa, Sudamericana, y más categorías temáticas
+- **Categorías Organizadas**: Liga Profesional, Copa Argentina, Copa Sudamericana, y más categorías temáticas
 - **Fixture Completo**: Próximos partidos y resultados
 - **Plantel del Equipo**: Información completa de jugadores y cuerpo técnico
 
@@ -112,16 +112,7 @@ NEXT_PUBLIC_GA_ID=G-XXXXXXXXXX
 NEXT_PUBLIC_SITE_URL=https://your-domain.com
 ```
 
-### **4. Configurar Base de Datos**
-Ejecuta los archivos SQL en tu proyecto de Supabase:
-
-```sql
--- Ejecutar en orden:
--- 1. migrate_matches_table.sql
--- 2. add_birth_date_column.sql
-```
-
-## ⚙️ Configuración
+### **4. Configuración**
 
 ### **Configuración de Next.js**
 El archivo `next.config.mjs` está configurado para:
@@ -334,12 +325,6 @@ Este proyecto está bajo la Licencia MIT. Mira el archivo [LICENSE](LICENSE) par
 ## 📞 Contacto
 
 - **Sitio Web**: [https://vozdelguapo.com](https://vozdelguapo.com)
-- **Email**: contacto@vozdelguapo.com
-- **GitHub**: [@tu-usuario](https://github.com/tu-usuario)
 
 ---
 
-<div align="center">
-  <p>Hecho con ❤️ para el <strong>Club Atlético Barracas Central</strong></p>
-  <p>⚽ ¡Vamos Barracas! 🏆</p>
-</div>
